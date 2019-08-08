@@ -63,7 +63,7 @@ Model.prototype.add = function(x, y) {
   if (this.balls.length >= this.maxPopulation) {
     return
   }
-  this.balls.push(new Ball(x || width / 2, y || height / 2));
+  this.balls.push(new Ball(x || width / 2, y || height / 2, this.balls));
   this.lastBallAddedTime = Date.now();
 }
 
@@ -91,11 +91,14 @@ Model.prototype.move = function() {
   }
 }
 
-var Ball = function (x, y) {
-  this.radius = 30 // Math.floor(Math.random() * 40) + 10;
+var Ball = function (x, y, balls) {
+  this.balls = balls;
+  this.radius = 30; // Math.floor(Math.random() * 40) + 10;
   this.position = createVector(x, y);
   this.hDir = Math.floor(Math.random() * 9) + 1;
   this.vDir = 10 - this.hDir;
+  this.nextHDir = this.hDir;
+  this.nextVDir = this.vDir;
   this.lifeSpan = 9;
   this.hue = Math.floor(Math.random() * 360);
   this.note = randomNote();
@@ -104,6 +107,8 @@ var Ball = function (x, y) {
 }
 
 Ball.prototype.move = function() {
+  this.hDir = this.nextHDir;
+  this.vDir = this.nextVDir;
   this.position.x += this.hDir;
   this.position.y += this.vDir;
   this.collision();
@@ -111,26 +116,51 @@ Ball.prototype.move = function() {
 
 Ball.prototype.collision = function() {
   var needsBounce = false;
+  // check walls
   if (this.position.x + this.radius >= width ||
-      this.position.x - this.radius <= 0) {
-    this.hDir = this.hDir - 2 * this.hDir;
+      this.position.x <= this.radius) {
+    this.nextHDir = this.hDir - 2 * this.hDir;
     needsBounce = true;
   }
   if (this.position.y + this.radius >= height ||
-      this.position.y - this.radius <= 0) {
-    this.vDir = this.vDir - 2 * this.vDir;
+      this.position.y <= this.radius) {
+    this.nextVDir = this.vDir - 2 * this.vDir;
     needsBounce = true;
+  }
+  // check other balls
+  for(var b = 0; b < this.balls.length; b++){
+    var ball = this.balls[b];
+    if (ball !== this) {
+      var distanceX = this.position.x - ball.position.x;
+      var distanceY = this.position.y - ball.position.y;
+      var distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+      if (distance <= this.radius + ball.radius) {
+        if ((this.hDir > 0 && ball.hDir < 0) ||
+            (this.hDir < 0 && ball.hDir > 0)) {
+          this.nextHDir = this.hDir - 2 * this.hDir;
+        }
+        if ((this.vDir > 0 && ball.vDir < 0) ||
+            (this.vDir < 0 && ball.vDir > 0)) {
+          this.nextVDir = this.vDir - 2 * this.vDir;
+        }
+        needsBounce = true;
+      }
+    }
   }
   needsBounce && this.bounce();
 }
 
 Ball.prototype.draw = function() {
-  fill(this.hue, 100, 100)
+  fill(this.hue, 100, 100);
+  noStroke();
   ellipse(this.position.x, this.position.y, this.radius, this.radius);
+  fill(0,0,0);
+  textSize(32);
+  text(this.lifeSpan, this.position.x, this.position.y);
 }
 
 Ball.prototype.bounce = function() {
-  this.synth.play(this.note, 0.1, 0, 0.1);
+  this.synth.play(this.note, 0.1, 0.01, 0.1);
   this.lifeSpan -= 1;
 }
 
