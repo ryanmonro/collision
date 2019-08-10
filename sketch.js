@@ -31,7 +31,11 @@ function soundLoop(time){
 }
 
 function draw() {
-  background(0);
+  background(60);
+  // fill(random(360), 100, 100);
+  // noStroke();
+  // ellipse(250, 250, 30, 30);
+
   model.move();
 }
 
@@ -85,6 +89,7 @@ Model.prototype.move = function() {
       dead.push(b);
     }
   }
+  // bring out your dead
   for(var i = 0; i < dead.length; i++){
     this.balls.splice(dead[i], 1);
     this.lastBallRemovedTime = Date.now();
@@ -93,25 +98,22 @@ Model.prototype.move = function() {
 
 var Ball = function (x, y, balls) {
   this.balls = balls;
-  this.radius = 30; // Math.floor(Math.random() * 40) + 10;
+  this.radius = 30; // random(10, 50)
   this.position = createVector(x, y);
-  this.hDir = Math.floor(Math.random() * 9) + 1;
-  this.vDir = 10 - this.hDir;
-  this.nextHDir = this.hDir;
-  this.nextVDir = this.vDir;
+  var xVel = random(1,9)
+  this.velocity = createVector(xVel, 10 - xVel)
+  this.nextVelocity = createVector(this.velocity.x, this.velocity.y);
   this.lifeSpan = 9;
-  this.hue = Math.floor(Math.random() * 360);
+  this.hue = random(360);
   this.note = randomNote();
   this.synth = new p5.MonoSynth();
   this.synth.connect(reverb);
 }
 
 Ball.prototype.move = function() {
-  this.hDir = this.nextHDir;
-  this.vDir = this.nextVDir;
-  this.position.x += this.hDir;
-  this.position.y += this.vDir;
+  // this.velocity = this.nextVelocity;
   this.collision();
+  this.position.add(this.velocity);
 }
 
 Ball.prototype.collision = function() {
@@ -119,31 +121,42 @@ Ball.prototype.collision = function() {
   // check walls
   if (this.position.x + this.radius >= width ||
       this.position.x <= this.radius) {
-    this.nextHDir = this.hDir - 2 * this.hDir;
+    this.velocity.x = this.velocity.x * -1;
     needsBounce = true;
   }
   if (this.position.y + this.radius >= height ||
       this.position.y <= this.radius) {
-    this.nextVDir = this.vDir - 2 * this.vDir;
+    this.velocity.y = this.velocity.y * -1;
     needsBounce = true;
   }
   // check other balls
   for(var b = 0; b < this.balls.length; b++){
     var ball = this.balls[b];
-    if (ball !== this) {
-      var distanceX = this.position.x - ball.position.x;
-      var distanceY = this.position.y - ball.position.y;
-      var distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
-      if (distance <= this.radius + ball.radius) {
-        if ((this.hDir > 0 && ball.hDir < 0) ||
-            (this.hDir < 0 && ball.hDir > 0)) {
-          this.nextHDir = this.hDir - 2 * this.hDir;
+    if (ball !== this){
+      var distance = this.position.dist(ball.position)
+      var minDistance = this.radius + ball.radius
+      if (distance < minDistance ) {
+        // balls colliding. First, move them apart.
+        // var overlap = minDistance - distance
+        var difference = p5.Vector.sub(this.position, ball.position)
+        var angle = p5.Vector.sub(this.position, ball.position).heading()
+        var x = minDistance * cos(angle)
+        var y = minDistance * sin(angle) 
+        var newDifference = createVector(x, y)
+        var change = p5.Vector.sub(difference, newDifference)
+        // ball.position.add(change)
+        ball.position.add(difference.x - x, difference.y - y)
+
+        // change their velocities
+        if ((this.velocity.x > 0 && ball.velocity.x < 0) ||
+            (this.velocity.x < 0 && ball.velocity.x > 0)) {
+          this.velocity.x = this.velocity.x * -1;
         }
-        if ((this.vDir > 0 && ball.vDir < 0) ||
-            (this.vDir < 0 && ball.vDir > 0)) {
-          this.nextVDir = this.vDir - 2 * this.vDir;
+        if ((this.velocity.y > 0 && ball.velocity.y < 0) ||
+            (this.velocity.y < 0 && ball.velocity.y > 0)) {
+          this.velocity.y = this.velocity.y * -1;
         }
-        needsBounce = true;
+        // needsBounce = true;
       }
     }
   }
