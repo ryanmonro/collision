@@ -4,7 +4,7 @@ var model, reverb;
 // console.log(Tonal.transpose("C4", "2M"))
 
 function setup() {
-  createCanvas(window.innerWidth / 2, window.innerHeight / 2);
+  createCanvas(window.innerWidth - 20, window.innerHeight - 20);
   frameRate(30);
   colorMode(HSB, 360, 100, 100);
   ellipseMode(RADIUS);
@@ -15,7 +15,7 @@ function setup() {
 }
 
 function draw() {
-  background(60);
+  background(20);
   model.move();
 }
 
@@ -50,9 +50,7 @@ Model.prototype.add = function(x, y) {
 }
 
 Model.prototype.populate = function() {
-  if (
-      // Date.now() > this.lastBallRemovedTime + this.ballAddInterval &&
-      Date.now() > this.lastBallAddedTime + this.ballAddInterval &&
+  if (Date.now() > this.lastBallAddedTime + this.ballAddInterval &&
       this.balls.length < this.minPopulation
     ) {
     this.add()
@@ -81,21 +79,24 @@ Model.prototype.move = function() {
 
 var Ball = function (x, y, balls) {
   this.balls = balls;
-  this.radius = 30; // random(10, 50)
+  var noteNumber = Math.floor(random(0, 11));
+  this.note = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B'][noteNumber];
+  this.octave = random(['3', '4', '5', '6'])
+  var octaveInt = parseInt(this.octave)
+  this.radius = (7 - octaveInt) * 20; // 20 should be related to screen size
   this.position = createVector(x, y);
   var xVel = random(1,9)
   this.velocity = createVector(xVel, 10 - xVel)
   this.nextVelocity = createVector(this.velocity.x, this.velocity.y);
   this.lifeSpan = 9;
-  this.mass = 1;
-  this.hue = random(360);
-  this.note = randomNote();
+  // this.mass = 4 / 3 * PI * this.radius * this.radius * this.radius;
+  this.mass = 1
+  this.hue = noteNumber * 360 / 12;
   this.synth = new p5.MonoSynth();
   this.synth.connect(reverb);
 }
 
 Ball.prototype.move = function() {
-  // this.velocity = this.nextVelocity;
   this.collision();
   this.position.add(this.velocity);
 }
@@ -122,6 +123,7 @@ Ball.prototype.collision = function() {
       if (distance < minDistance ) {
         this.changeVectors(ball);
         needsBounce = true;
+        ball.bounce();
       }
     }
   }
@@ -135,7 +137,7 @@ Ball.prototype.changeVectors = function(ball) {
   var difference = p5.Vector.sub(this.position, ball.position)
   var newPos = createVector(minDistance * cos(angle), minDistance * sin(angle))
   ball.position.add(difference.x - newPos.x, difference.y - newPos.y)
-  
+
   // Thank you Adam Brookes http://cobweb.cs.uga.edu/~maria/classes/4070-Spring-2017/Adam%20Brookes%20Elastic%20collision%20Code.pdf
   // Normalise distance vector, find tangent vector
   var normalVector = difference.normalize()
@@ -167,11 +169,13 @@ Ball.prototype.changeVectors = function(ball) {
 Ball.prototype.draw = function() {
   fill(this.hue, 100, 100);
   noStroke();
+  // noFill()
   ellipse(this.position.x, this.position.y, this.radius, this.radius);
 }
 
 Ball.prototype.bounce = function() {
   // this.synth.pan(1)
-  this.synth.play(this.note, 0.1, 0.01, 0.1);
+  console.log(this.note + this.octave)
+  this.synth.play(this.note + this.octave, 0.1, 0.01, 0.1);
   this.lifeSpan -= 1;
 }
