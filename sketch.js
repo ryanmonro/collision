@@ -175,7 +175,6 @@ Ball.prototype.draw = function() {
 
 Ball.prototype.bounce = function() {
   // this.synth.pan(1)
-  console.log(this.note + this.octave)
   this.synth.play(this.note + this.octave, 0.1, 0.01, 0.1);
   this.lifeSpan -= 1;
 }
