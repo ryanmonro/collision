@@ -64,7 +64,7 @@ Model.prototype.move = function() {
     var ball = this.balls[b];
     ball.move();
     ball.draw();
-    if (ball.lifeSpan == 0) {
+    if (ball.lifeSpan <= 0) {
       dead.push(b);
     }
   }
@@ -79,19 +79,14 @@ Model.prototype.move = function() {
 
 var Ball = function (x, y, balls) {
   this.balls = balls;
-  var noteNumber = Math.floor(random(0, 11));
-  this.note = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B'][noteNumber];
-  this.octave = random(['3', '4', '5', '6'])
-  var octaveInt = parseInt(this.octave)
-  this.radius = (7 - octaveInt) * 20; // 20 should be related to screen size
-  this.position = createVector(x, y);
-  var xVel = random(1,9)
-  this.velocity = createVector(xVel, 10 - xVel)
+  this.note = Math.floor(random(0, 11));
+  this.octave = Math.floor(random(0, 2));
+  var r = (4 - this.octave) * 20;
+  this.radius = r; // 20 should be related to screen size
+  this.position = createVector(constrain(x, r + 1, width - r - 1), constrain(y, r + 1, height - r - 1));
+  this.velocity = createVector(random(-10, 10), random(-10, 10))
   this.nextVelocity = createVector(this.velocity.x, this.velocity.y);
-  this.lifeSpan = 9;
-  // this.mass = 4 / 3 * PI * this.radius * this.radius * this.radius;
-  this.mass = 1
-  this.hue = noteNumber * 360 / 12;
+  this.lifeSpan = 12;
   this.synth = new p5.MonoSynth();
   this.synth.connect(reverb);
 }
@@ -99,6 +94,10 @@ var Ball = function (x, y, balls) {
 Ball.prototype.move = function() {
   this.collision();
   this.position.add(this.velocity);
+}
+
+Ball.prototype.mass = function() {
+  return 4 / 3 * PI * this.radius * this.radius * this.radius;
 }
 
 Ball.prototype.collision = function() {
@@ -152,8 +151,8 @@ Ball.prototype.changeVectors = function(ball) {
   var ballScalarTangential = tangentVector.dot(ball.velocity)
 
   // Find new velocities
-  var thisScalarNormalAfter = (thisScalarNormal * (this.mass - ball.mass) + 2 * ball.mass * ballScalarNormal) / (this.mass + ball.mass);
-  var ballScalarNormalAfter = (ballScalarNormal * (ball.mass - this.mass) + 2 * this.mass * thisScalarNormal) / (this.mass + ball.mass);
+  var thisScalarNormalAfter = (thisScalarNormal * (this.mass() - ball.mass()) + 2 * ball.mass() * ballScalarNormal) / (this.mass() + ball.mass());
+  var ballScalarNormalAfter = (ballScalarNormal * (ball.mass() - this.mass()) + 2 * this.mass() * thisScalarNormal) / (this.mass() + ball.mass());
 
   // convert to vectors
   var thisScalarNormalAfterVector = p5.Vector.mult(normalVector, thisScalarNormalAfter);
@@ -167,14 +166,23 @@ Ball.prototype.changeVectors = function(ball) {
 }
 
 Ball.prototype.draw = function() {
-  fill(this.hue, 100, 100);
-  noStroke();
+  var hue = this.note * 360 / 12
+  fill(hue, 100, 100)
+  noStroke()
   // noFill()
   ellipse(this.position.x, this.position.y, this.radius, this.radius);
 }
 
 Ball.prototype.bounce = function() {
   // this.synth.pan(1)
-  this.synth.play(this.note + this.octave, 0.1, 0.01, 0.1);
+  var note = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B'][this.note]
+  var octave = ['3', '4', '5', '6'][this.octave]
+  console.log(note, octave, this.octave)
+  this.synth.play(note + octave, 0.1, 0.01, 0.1);
   this.lifeSpan -= 1;
+  this.note += 1;
+  if(this.note == 12){
+    this.note = 0;
+    this.octave += 1;
+  }
 }
