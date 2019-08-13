@@ -23,7 +23,7 @@ function draw() {
   model.move();
 }
 
-function mouseClicked() {
+function touchStarted() {
   getAudioContext().resume();
   var mX = constrain(mouseX, 0, width)
   var mY = constrain(mouseY, 0, height)
