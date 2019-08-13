@@ -102,10 +102,10 @@ var Ball = function (x, y, balls) {
 }
 
 Ball.prototype.findPosition = function(x, y) {
-  if (x != null && y != null) {
-    return createVector(x, y)
-  }
   var r = this.radius
+  if (x != null && y != null) {
+    return createVector(constrain(x, r + 1, width - r - 1), constrain(y, r + 1, height - r - 1))
+  }
   var xPos, yPos
   var collision = false
   // keep getting random position until we have one that isn't too close to any other balls
