@@ -9,6 +9,9 @@ function setup() {
   frameRate(30);
   colorMode(HSB, 360, 170, 100);
   ellipseMode(RADIUS);
+  reverb = new p5.Reverb();
+  reverb.set(1.7);
+  reverb.connect(p5.soundOut);
   notes = shuffle(['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B'])
   var shortestSide = (height < width ? height : width)
   radiusFactor = shortestSide / 40
@@ -100,6 +103,7 @@ var Ball = function (x, y, balls) {
   this.nextVelocity = createVector(this.velocity.x, this.velocity.y);
   this.lifeSpan = 12;
   this.synth = new p5.MonoSynth();
+  this.synth.connect(reverb)
   this.needsPlay = false;
 }
 
@@ -197,10 +201,10 @@ Ball.prototype.draw = function() {
 
 Ball.prototype.play = function() {
   if(this.needsPlay == true){
-  // this.synth.pan(1)
+  this.synth.oscillator.pan(this.position.x / (width / 2) - 1)
     var note = notes[this.note]
     var octave = ['3', '4', '5', '6'][this.octave]
-    this.synth.play(note + octave, 0.1, 0.01, 0.1);
+    this.synth.play(note + octave, 0.4, 0.1, 0.1);
     if(this.lifeSpan > 0 ){
       this.note += 1;
     }
