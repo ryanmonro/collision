@@ -3,7 +3,6 @@
 var model, reverb;
 var notes, radiusFactor, maxVelocity;
 
-
 function setup() {
   createCanvas(window.innerWidth - 20, window.innerHeight - 20);
   frameRate(30);
@@ -28,7 +27,7 @@ function mouseClicked() {
   getAudioContext().resume();
   var mX = constrain(mouseX, 0, width)
   var mY = constrain(mouseY, 0, height)
-  model.add(mX, mY);
+  model.addBall(mX, mY);
 }
 
 function keyPressed(){
@@ -48,9 +47,9 @@ var Model = function () {
   this.frame = 0;
 }
 
-Model.prototype.add = function(x, y, dx, dy) {
+Model.prototype.addBall = function(x, y, dx, dy) {
   if(this.balls.length < this.maxPopulation){
-    this.balls.push(new Ball(x || width / 2, y || height / 2, this.balls));
+    this.balls.push(new Ball(x, y, this.balls));
     this.lastBallAddedTime = Date.now();
   }
 }
@@ -59,7 +58,7 @@ Model.prototype.populate = function() {
   if (Date.now() > this.lastBallAddedTime + this.ballAddInterval &&
       this.balls.length < this.minPopulation
     ) {
-    this.add()
+    this.addBall()
   }
 }
 
@@ -70,17 +69,12 @@ Model.prototype.move = function() {
   for (var b = 0; b < this.balls.length; b++){
     var ball = this.balls[b];
     ball.move();
+    ball.draw();
+    ball.play()
     if (ball.lifeSpan <= 0) {
       dead.push(b);
     }
   }
-  // playball, drawball
-  this.balls.forEach(function(ball){
-    ball.draw();
-    if (ball.needsPlay) {
-      ball.play()
-    }
-  })
   // bring out your dead
   for(var i = dead.length - 1; i >= 0 ; i--){
     this.balls.splice(dead[i], 1);
@@ -96,9 +90,9 @@ var Ball = function (x, y, balls) {
   this.balls = balls;
   this.note = Math.floor(random(0, 11));
   this.octave = Math.floor(random(0, 3));
-  var r = (4 - this.octave) * radiusFactor;
-  this.radius = r; // 20 should be related to screen size
-  this.position = createVector(constrain(xPos, r + 1, width - r - 1), constrain(yPos, r + 1, height - r - 1));
+  this.mass = 1;
+  this.radius = (4 - this.octave) * radiusFactor;; 
+  this.position = this.findPosition(x, y);
   this.velocity = createVector(random(0 - maxVelocity, maxVelocity), random(0 - maxVelocity, maxVelocity))
   this.nextVelocity = createVector(this.velocity.x, this.velocity.y);
   this.lifeSpan = 12;
@@ -107,22 +101,47 @@ var Ball = function (x, y, balls) {
   this.needsPlay = false;
 }
 
+Ball.prototype.findPosition = function(x, y) {
+  if (x != null && y != null) {
+    return createVector(x, y)
+  }
+  var r = this.radius
+  var xPos, yPos
+  var collision = false
+  // keep getting random position until we have one that isn't too close to any other balls
+  do {
+    xPos = constrain(random(width), r + 1, width - r - 1)
+    yPos = constrain(random(height), r + 1, height - r - 1)
+    for (var b = 0; b < this.balls.length; b++){
+      var ball = this.balls[b];
+      if (ball === this) {
+        continue;
+      }
+      var position = createVector(xPos, yPos)
+      if (ball.position.dist(position) < this.radius + ball.radius) {
+        collision = true;
+        console.log("Too close:", ball.position.dist(position))
+        break
+      }
+      else {
+        collision = false;
+      }
+      
+    }
+  }
+  while (collision === true);
+
+  return createVector(xPos, yPos)
+}
+
 Ball.prototype.move = function() {
-  this.collision();
-  this.position.add(this.velocity);
-}
-
-Ball.prototype.mass = function() {
-  return 1
-}
-
-Ball.prototype.collision = function() {
   this.checkWalls()
-  // check other balls
+  // check for collisions with other balls
   for(var b = 0; b < this.balls.length; b++){
     var ball = this.balls[b];
-    this.bounce(ball);
+    this.collision(ball);
   }
+  this.position.add(this.velocity);
 }
 
 Ball.prototype.checkWalls = function() {
@@ -143,7 +162,7 @@ Ball.prototype.touched = function(){
   this.lifeSpan -= 1;
 }
 
-Ball.prototype.bounce = function(ball) {
+Ball.prototype.collision = function(ball) {
   var distance = this.position.dist(ball.position)
   var minDistance = this.radius + ball.radius 
   if (ball == this || distance > minDistance) {
@@ -172,8 +191,8 @@ Ball.prototype.bounce = function(ball) {
   var ballScalarTangential = tangentVector.dot(ball.velocity)
 
   // Find new velocities
-  var thisScalarNormalAfter = (thisScalarNormal * (this.mass() - ball.mass()) + 2 * ball.mass() * ballScalarNormal) / (this.mass() + ball.mass());
-  var ballScalarNormalAfter = (ballScalarNormal * (ball.mass() - this.mass()) + 2 * this.mass() * thisScalarNormal) / (this.mass() + ball.mass());
+  var thisScalarNormalAfter = (thisScalarNormal * (this.mass - ball.mass) + 2 * ball.mass * ballScalarNormal) / (this.mass + ball.mass);
+  var ballScalarNormalAfter = (ballScalarNormal * (ball.mass - this.mass) + 2 * this.mass * thisScalarNormal) / (this.mass + ball.mass);
 
   // convert to vectors
   var thisScalarNormalAfterVector = p5.Vector.mult(normalVector, thisScalarNormalAfter);
@@ -182,7 +201,6 @@ Ball.prototype.bounce = function(ball) {
   var ballScalarNormalVector = p5.Vector.mult(tangentVector, ballScalarTangential);
 
   // add normal and tangentials for each ball
-  // this.velocity = thisScalarNormalVector
   this.velocity = p5.Vector.add(thisScalarNormalVector, thisScalarNormalAfterVector);
   ball.velocity = p5.Vector.add(ballScalarNormalVector, ballScalarNormalAfterVector);
 
@@ -201,7 +219,7 @@ Ball.prototype.draw = function() {
 
 Ball.prototype.play = function() {
   if(this.needsPlay == true){
-  this.synth.oscillator.pan(this.position.x / (width / 2) - 1)
+    this.synth.oscillator.pan(this.position.x / (width / 2) - 1)
     var note = notes[this.note]
     var octave = ['3', '4', '5', '6'][this.octave]
     this.synth.play(note + octave, 0.4, 0.1, 0.1);
