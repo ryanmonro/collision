@@ -120,7 +120,6 @@ Ball.prototype.findPosition = function(x, y) {
       var position = createVector(xPos, yPos)
       if (ball.position.dist(position) < this.radius + ball.radius) {
         collision = true;
-        console.log("Too close:", ball.position.dist(position))
         break
       }
       else {
@@ -222,7 +221,7 @@ Ball.prototype.play = function() {
     this.synth.oscillator.pan(this.position.x / (width / 2) - 1)
     var note = notes[this.note]
     var octave = ['3', '4', '5', '6'][this.octave]
-    this.synth.play(note + octave, 0.4, 0.1, 0.1);
+    this.synth.play(note + octave, 0.1, 0.1, 0.1);
     if(this.lifeSpan > 0 ){
       this.note += 1;
     }
